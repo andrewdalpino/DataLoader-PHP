@@ -1,0 +1,29 @@
+{
+    "name": "andrewdalpino/dataloader-php",
+    "description": "A speed layer that enables query batching, de-duplication, and caching for efficient data fetching over any type of storage backend.",
+    "license": "MIT",
+    "keywords": ["php", "dataloader", "graphql", "cache", "batching", "deduplication"],
+    "authors": [
+        {
+            "name": "Andrew DalPino",
+            "email": "me@andrewdalpino.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "6.0.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "AndrewDalpino\\DataLoader\\": "src/"
+        }
+    },
+    "config": {
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
