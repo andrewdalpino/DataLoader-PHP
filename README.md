@@ -22,10 +22,10 @@ $batchFunction = function ($keys) {
 };
 ```
 
-To build your data loader, feed the batch function into the static build method of the DataLoader class, and you're done.
+To build your data loader, feed the batch function into the static `make()` method of the DataLoader class, and you're done.
 
 ```php
-$loader = BatchingDataLoader::build($batchFunction);
+$loader = BatchingDataLoader::make($batchFunction);
 ```
 
 Optionally, you can specify a cache key function that gets looped over with the data returned from the batch function so that you can tell DataLoader how to identify the entity. If you do not specify a cache key function then DataLoader will try to use `$entity->id`, `$entity['id']`, or fallback to the index of the returned array. It is a best practice to specify a cache key function.
@@ -35,7 +35,7 @@ $cacheKeyFunction = function ($entity, $index) {
     return $entity['id'];
 };
 
-$loader = BatchingDataLoader::build($batchFunction, $cacheKeyFunction);
+$loader = BatchingDataLoader::make($batchFunction, $cacheKeyFunction);
 ```
 
 ### Example
@@ -55,7 +55,7 @@ $cacheKeyFunction = function ($user, $index) {
     return $user->id;
 };
 
-$userLoader = BatchingDataLoader::build($batchFunction, $cacheKeyFunction);
+$userLoader = BatchingDataLoader::make($batchFunction, $cacheKeyFunction);
 ```
 
 ## Usage
@@ -123,7 +123,7 @@ $friends = $user->friends()->get();
 $userLoader->prime($friends);
 ```
 
-Once the cache has been primed, you may call `load()` to load the entities as usual. If you try to prime a key that has already been primed or loaded, the cached entry will **not** be overwritten. To force an overwrite you may call `forget()` first and then `prime()` per normal.
+Once the cache has been primed, you may call `load()` to load the entities as usual. If you try to prime a key that has already been primed or loaded, the cached entry will **not** be overwritten. To force an overwrite you may call `forget()` first and then `prime()` per normal. `forget()` takes either a single `$key` or an array of `$keys` as its only argument and returns the data loader instance.
 
 ```php
 $user = User::find('qDkX7');
@@ -175,7 +175,7 @@ $cacheKeyFunction = function ($user, $index) {
     return $user->id;
 };
 
-$userLoader = BatchingDataLoader::build($batchFunction. $cacheKeyFunction);
+$userLoader = BatchingDataLoader::build($batchFunction, $cacheKeyFunction);
 
 $userLoader->batch([1, 2, 3]);
 
@@ -183,6 +183,17 @@ $users = $userLoader->load([1, 2, 3]);
 ```
 
 Now when we call `load()`, the database will only get hit if the key is not in the request cache *or* the application cache.
+
+## Runtime Configuration
+You can tweak the runtime characteristics of DataLoader by supplying an array of options as the third parameter to the `make()` method when building the data loader. The options available are listed below with their default values.
+
+```php
+$options = [
+    'batch_size' => 1000 // The max number of entities to batch load in a single round trip from storage.
+];
+
+$loader = BatchingDataLoader::make($batchFunction, $cacheKeyFunction, $options);
+```
 
 ## Requirements
 - PHP 7.1 or above

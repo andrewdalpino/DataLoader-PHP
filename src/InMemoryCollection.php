@@ -5,6 +5,7 @@ namespace AndrewDalPino\DataLoader;
 use IteratorAggregate;
 use ArrayIterator;
 use ArrayAccess;
+use Traversable;
 use Countable;
 
 class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
@@ -107,6 +108,36 @@ class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
     }
 
     /**
+     * Take a cross section of the collection.
+     *
+     * @param  int  $offset
+     * @param  int  $length
+     * @return static
+     */
+    public function slice($offset, $length = null)
+    {
+        return new static(array_slice($this->items, $offset, $length, true));
+    }
+
+    /**
+     * Take a number of items from the beginning of the collection.
+     *
+     * @param  int  $limit
+     * @param  bool  $burn
+     * @return static
+     */
+    public function take(int $limit, bool $burn = false)
+    {
+        $taken = $this->slice(0, $limit);
+
+        if ($burn === true) {
+            $this->forget($taken->keys());
+        }
+
+        return $taken;
+    }
+
+    /**
      * Get the keys of all the items in the collection.
      *
      * @return array
@@ -159,8 +190,8 @@ class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
     /**
      * Remove an item from the collection by key.
      *
-     * @param  mixed|array  $keys
-     * @return $this
+     * @param  mixed  $keys
+     * @return self
      */
     public function forget($keys)
     {
@@ -254,6 +285,8 @@ class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
             return $items;
         } elseif ($items instanceof self) {
             return $items->all();
+        } elseif ($items instanceof Traversable) {
+            return iterator_to_array($items);
         }
 
         return (array) $items;

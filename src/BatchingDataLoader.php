@@ -35,13 +35,21 @@ class BatchingDataLoader
     protected $cacheKeyFunction;
 
     /**
-     * Factory create method.
+     * An array of options.
+     *
+     * @var  array  $options
+     */
+    protected $options;
+
+    /**
+     * Factory build method.
      *
      * @param  callable  $batchFunction
      * @param  callable|null  $cacheKeyFunction
+     * @param  array  $options
      * @return self
      */
-    public static function build(callable $batchFunction, callable $cacheKeyFunction = null)
+    public static function make(callable $batchFunction, callable $cacheKeyFunction = null, array $options = [])
     {
         if (is_null($cacheKeyFunction)) {
             $cacheKeyFunction = function ($entity, $index) {
@@ -49,18 +57,24 @@ class BatchingDataLoader
             };
         }
 
-        return new self($batchFunction, $cacheKeyFunction);
+        $options = array_merge([
+            'batch_size' => 1000
+        ], $options);
+
+        return new self($batchFunction, $cacheKeyFunction, $options);
     }
 
     /**
      * @param  callable  $batchFunction
      * @param  callable  $cacheKeyFunction
+     * @param  array  $options
      * @return void
      */
-    protected function __construct(callable $batchFunction, callable $cacheKeyFunction)
+    protected function __construct(callable $batchFunction, callable $cacheKeyFunction, array $options)
     {
         $this->batchFunction = $batchFunction;
         $this->cacheKeyFunction = $cacheKeyFunction;
+        $this->options = $options;
         $this->buffer = Buffer::init();
         $this->loaded = RequestCache::init();
     }
@@ -73,11 +87,7 @@ class BatchingDataLoader
      */
     public function batch($keys)
     {
-        if (! is_array($keys)) {
-            $keys = [$keys];
-        }
-
-        foreach ($keys as $index => $key) {
+        foreach ((array) $keys as $index => $key) {
             $key = $this->convertToCacheKey($key);
 
             $this->buffer->put($key, null);
@@ -182,20 +192,18 @@ class BatchingDataLoader
     {
         $queue = $this->buffer->diffKeys($this->loaded);
 
-        if (! empty($queue)) {
-            $queue = $queue->keyBy(function ($entity, $key) {
+        while ($queue->count() > 0) {
+            $batch = $queue->take($this->options['batch_size'], true);
+
+            $batch = $batch->keyBy(function ($entity, $key) {
                 return $this->convertToStorageKey($key);
             });
 
-            $loaded = call_user_func($this->batchFunction, $queue->keys());
+            $loaded = call_user_func($this->batchFunction, $batch->keys());
 
             if (! is_iterable($loaded)) {
                 throw new InvalidArgumentException('Batch function must return an array or iterable object, '
                     . gettype($loaded) . ' found instead.');
-            }
-
-            if (! is_array($loaded)) {
-                $loaded = iterator_to_array($loaded);
             }
 
             $results = new ResultSet($loaded);

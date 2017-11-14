@@ -31,7 +31,11 @@ class BatchingDataLoaderTest extends TestCase
             }, ARRAY_FILTER_USE_BOTH);
         };
 
-        $this->dataloader = BatchingDataLoader::build($batchFunction, $cacheKeyFunction);
+        $options = [
+            'batch_size' => 3
+        ];
+
+        $this->dataloader = BatchingDataLoader::make($batchFunction, $cacheKeyFunction);
     }
 
     public function test_build_data_loader()
@@ -54,6 +58,7 @@ class BatchingDataLoaderTest extends TestCase
             ':00000000-0000-0000-0000-000000000001' => ['id' => '00000000-0000-0000-0000-000000000001', 'name' => 'andrew'],
             ':some:thing' => ['id' => 'some:thing', 'name' => ''],
         ], $many);
+        $this->assertFalse(in_array(['id' => 2, 'name' => 'bar'], $many));
 
         $this->dataloader->flush();
     }
@@ -116,7 +121,7 @@ class BatchingDataLoaderTest extends TestCase
         $this->assertTrue(is_null($entity));
     }
 
-    public function test_bad_batch_key()
+    public function test_bad_cache_key()
     {
         $this->expectException(InvalidArgumentException::class);
 
@@ -125,7 +130,7 @@ class BatchingDataLoaderTest extends TestCase
 
     public function test_bad_batch_function()
     {
-        $dataloader = BatchingDataLoader::build(function ($keys) {
+        $dataloader = BatchingDataLoader::make(function ($keys) {
             return 'bad';
         });
 
