@@ -131,6 +131,17 @@ class BatchingDataLoader
     }
 
     /**
+     * Bypass the buffer and load entities immediately.
+     *
+     * @param  mixed  $keys
+     * @return mixed|null
+     */
+    public function loadNow($keys)
+    {
+        return $this->batch($keys)->load($keys);
+    }
+
+    /**
      * Prime the request cache.
      *
      * @param  mixed  $entities

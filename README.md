@@ -71,18 +71,28 @@ $userLoader->batch([1, 2, 3, 4, 5]);
 
 It is important to call `batch()` for every entity you plan to load during the current request cycle. DataLoader will **not** make any additional requests to the storage backend if you miss something.
 
-Once you are finished batching, you may call `load()` to fetch the entities by key. The `load()` method takes either a single `$key` or an array of `$keys` and returns a single entity or an array of entities respectively. Entities not found will return null.
+Once you have finished batching, you may call `load()` to fetch each entity by its key. The `load()` method takes either a single `$key` or an array of `$keys` and returns a single entity or an array of entities respectively. Subsequent calls to the same entity will be loaded directly from the in-memory request cache to prevent over fetching. Entities not found will return null.
 
 ```php
 $userLoader->batch(['a', 'b', 'c', 'd', 'e']);
 
 $user = $userLoader->load('a'); // Returns the user with primary key 'a'.
 
-$user = $userLoader->load('z'); // Returns null.
-
 $users = $userLoader->load(['b', 'c', 'd', 'e']); // Returns an array of users.
 
 $users = $userLoader->load(['b', 'c']); // Additional loads don't hit the database.
+
+$users = $userLoader->loadMany(['f', 'g', 'h']); // Does the same as load(), but only accepts an array.
+
+$user = $userLoader->load('z'); // Returns null.
+```
+
+If for some reason you just need DataLoader to load an entity without batching, then you may use the `loadNow()` method to bypass the buffer and load the data immediately. Entities loaded with the `loadNow()` function will be cached for the remainder of the request cycle. To force a refetch you may use the `forget()` method first and then call `loadNow()`. `forget()` takes either a single `$key` or an array of `$keys` as its only argument and returns the data loader instance for chaining.
+
+```php
+$user = $userLoader->loadNow(1234); // Bypass the buffer and fetch the user entity immediately.
+
+$user = $userLoader->forget(1234)->loadNow(1234); // Force a refetch.
 ```
 
 ### Example
@@ -97,11 +107,11 @@ $postType = new ObjectType([
     'fields' => [
         'author' => [
             'type' => 'UserNode',
-            'resolve' => function($root) {
-                UserLoader::batch($root->author_id);
+            'resolve' => function($post) {
+                UserLoader::batch($post->author_id);
 
-                return new Deferred(function () use ($root) {
-                    return UserLoader::load($root->author_id);
+                return new Deferred(function () use ($post) {
+                    return UserLoader::load($post->author_id);
                 });
             }
         ],
@@ -109,7 +119,7 @@ $postType = new ObjectType([
 ]);
 ```
 
-In this example, whenever the *author* field on a Post object is requested in a GraphQL query, the data loader will batch the user entity supporting that data, and then wait until the Deferred callback is executed once the query has been fully parsed to fetch the data. It is clearer to see how we avoid any N+1 problems by employing this mechanism when selecting multiple posts with their author.
+In this example, whenever the *author* field on a Post object is requested in a GraphQL query, the data loader will batch the user entity supporting that data, and then wait until the query has been fully parsed to fetch the data via the Deferred callback. It is clearer to see how we avoid any N+1 problems by employing this mechanism when querying multiple posts with their author.
 
 ### Loading entities from outside of the batch function
 Sometimes, the batch function is not always the most efficient route to accessing a particular dataset. Other circumstances, such as non-primary key lookups, it's just not possible.
@@ -124,7 +134,7 @@ $friends = $user->friends()->get();
 $userLoader->prime($friends);
 ```
 
-Once the cache has been primed, you may call `load()` on the entity's primary key to load it as normal. If you try to prime a key that has already been primed or loaded, the cached entry will **not** be overwritten. To force an overwrite you may call `forget()` first and then `prime()` per normal. `forget()` takes either a single `$key` or an array of `$keys` as its only argument and returns the data loader instance for chaining.
+Once the cache has been primed, you may call `load()` on the entity's primary key to load it as normal. If you try to prime a key that has already been primed or loaded, the cached entry will **not** be overwritten. To force an overwrite you can call `forget()` first and then `prime()` per normal.
 
 ```php
 $user = User::find('qDkX7');
@@ -179,6 +189,8 @@ $cacheKeyFunction = function ($user, $index) {
 $userLoader = BatchingDataLoader::make($batchFunction, $cacheKeyFunction);
 
 $userLoader->batch([1, 2, 3]);
+
+// Do something ...
 
 $users = $userLoader->load([1, 2, 3]);
 ```

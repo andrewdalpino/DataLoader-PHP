@@ -63,6 +63,18 @@ class BatchingDataLoaderTest extends TestCase
         $this->dataloader->flush();
     }
 
+    public function test_load_now()
+    {
+        $this->dataloader->flush();
+
+        $entity = $this->dataloader->loadNow(1);
+
+        $many = $this->dataloader->loadNow([2, 3]);
+
+        $this->assertEquals(['id' => 1, 'name' => 'foo'], $entity);
+        $this->assertEquals([':2' => ['id' => 2, 'name' => 'bar'], ':3' => ['id' => 3, 'name' => 'baz']], $many);
+    }
+
     public function test_prime_cache()
     {
         $this->dataloader->prime([0 => ['id' => 'foo', 'name' => 'donny']]);
