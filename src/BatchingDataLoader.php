@@ -193,7 +193,7 @@ class BatchingDataLoader
         $queue = $this->buffer->diffKeys($this->loaded);
 
         while ($queue->count() > 0) {
-            $batch = $queue->take($this->options['batch_size'], true);
+            $batch = $queue->take($this->options['batch_size']);
 
             $batch = $batch->keyBy(function ($entity, $key) {
                 return $this->convertToStorageKey($key);

@@ -118,7 +118,7 @@ class InMemoryCollectionTest extends TestCase
         $this->assertEquals(['aaaa' => 'foo', 'bbbb' => 'bar'], $collection->all());
     }
 
-    public function test_take_items_from_collection_and_burn()
+    public function test_take_items_from_collection()
     {
         $collection = new InMemoryCollection([
             0 => 'first',
@@ -126,12 +126,12 @@ class InMemoryCollectionTest extends TestCase
             3 => 'third',
         ]);
 
-        $taken = $collection->take(2, true);
+        $taken = $collection->take(2);
 
         $this->assertContains('first', $taken);
         $this->assertContains('second', $taken);
 
-        $this->assertTrue($collection->count() === 1);
+        $this->assertEquals([3 => 'third'], $collection->all());
     }
 
     public function test_diff_keys()

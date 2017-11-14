@@ -108,7 +108,7 @@ class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
     }
 
     /**
-     * Take a cross section of the collection.
+     * Return a cross section of the collection.
      *
      * @param  int  $offset
      * @param  int  $length
@@ -120,19 +120,16 @@ class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
     }
 
     /**
-     * Take a number of items from the beginning of the collection.
+     * Return a number of items from the beginning of the collection before burning them.
      *
      * @param  int  $limit
-     * @param  bool  $burn
      * @return static
      */
-    public function take(int $limit, bool $burn = false)
+    public function take(int $limit)
     {
         $taken = $this->slice(0, $limit);
 
-        if ($burn === true) {
-            $this->forget($taken->keys());
-        }
+        $this->forget($taken->keys());
 
         return $taken;
     }
