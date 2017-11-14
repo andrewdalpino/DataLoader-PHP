@@ -87,7 +87,7 @@ $users = $userLoader->loadMany(['f', 'g', 'h']); // Does the same as load(), but
 $user = $userLoader->load('z'); // Returns null.
 ```
 
-If for some reason you just need DataLoader to load an entity without batching, then you may use the `loadNow()` method to bypass the buffer and load the data immediately. Entities loaded with the `loadNow()` function will be cached for the remainder of the request cycle. To force a refetch you may use the `forget()` method first and then call `loadNow()`. `forget()` takes either a single `$key` or an array of `$keys` as its only argument and returns the data loader instance for chaining.
+If for some reason you just need DataLoader to load an entity without batching, then you may use the `loadNow()` method to bypass the buffer and load the data immediately. Entities loaded with the `loadNow()` function will be cached for the remainder of the request cycle. To force a refetch you may use the `forget()` method first and then call `loadNow()`. `forget()` takes a single `$key` as its only argument and returns the data loader instance for chaining.
 
 ```php
 $user = $userLoader->loadNow(1234); // Bypass the buffer and fetch the user entity immediately.
@@ -122,9 +122,9 @@ $postType = new ObjectType([
 In this example, whenever the *author* field on a Post object is requested in a GraphQL query, the data loader will batch the user entity supporting that data, and then wait until the query has been fully parsed to fetch the data via the Deferred callback. It is clearer to see how we avoid any N+1 problems by employing this mechanism when querying multiple posts with their author.
 
 ### Loading entities from outside of the batch function
-Sometimes, the batch function is not always the most efficient route to accessing a particular dataset. Other circumstances, such as non-primary key lookups, it's just not possible.
+Sometimes, the batch function is not the most efficient route to accessing a particular dataset. Under other circumstances, such as non-primary key lookups, it's just not possible.
 
-If you need to load an entity into the request cache from another source, other than the batch function, you may do so by calling the `prime()` method on the data loader instance. The `prime()` method takes either a single entity or an array of entities as an argument, and will be keyed by the same cache key function as entities loaded with `batch()`.
+When you need to load an entity into the request cache from another source, other than the batch function, you may do so by calling the `prime()` method on the data loader instance. The `prime()` method takes either a single entity or an array of entities as an argument, and will be keyed by the same cache key function as entities loaded with `batch()`.
 
 ```php
 $user = User::find(1);
@@ -134,7 +134,7 @@ $friends = $user->friends()->get();
 $userLoader->prime($friends);
 ```
 
-Once the cache has been primed, you may call `load()` on the entity's primary key to load it as normal. If you try to prime a key that has already been primed or loaded, the cached entry will **not** be overwritten. To force an overwrite you can call `forget()` first and then `prime()` per normal.
+Once the cache has been primed, you may call `load()` on the entity's key to load it as normal. If you try to prime a key that has already been loaded or primed, the existing entry will **not** be overwritten. To force an overwrite you can call `forget()` first and then `prime()` per normal.
 
 ```php
 $user = User::find('qDkX7');
@@ -149,7 +149,7 @@ You may clear the entire in-memory request cache by calling the `flush()` method
 $userLoader->flush();
 ```
 
-## Additional caching
+## Additional Caching
 Although the DataLoader request cache is very fast, because of its short-lived nature, it is not a replacement for application level caching. DataLoader batch functions make it easy to add application level caching right below the request cache to make data fetching even faster. The following example demonstrates how you can implement an application cache using the [Laravel Cache](https://laravel.com/docs/5.5/cache) facade in a batch function.
 
 ```php
