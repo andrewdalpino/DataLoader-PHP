@@ -111,9 +111,9 @@ class BatchingDataLoader
      */
     public function loadMany(array $keys) : array
     {
-        foreach ($keys as $index => $key) {
-            $keys[$index] = $this->convertToCacheKey($key);
-        }
+        $keys = array_map(function ($key) {
+            return $this->convertToCacheKey($key);
+        }, $keys);
 
         return $this->execute()->filter(function ($value, $key) use ($keys) {
             return in_array($key, $keys);
@@ -128,7 +128,7 @@ class BatchingDataLoader
      */
     public function prime($entities)
     {
-        if (! is_array($entities)) {
+        if (! is_iterable($entities)) {
             $entities = [$entities];
         }
 

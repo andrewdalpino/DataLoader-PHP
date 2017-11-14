@@ -14,7 +14,7 @@ composer require andrewdalpino/dataloader-php
 ```
 
 ## Getting Started
-First, you need to create a batch function that will perform the duty of loading the buffered entities from storage when the time comes. You are free to implement the batch function how you wish, however, it **must** return an array of entities.
+First, you need to create a batch function that will perform the duty of loading the buffered entities from storage when the time comes. You are free to implement the batch function how you wish, however, it **must** return an array.
 
 ```php
 $batchFunction = function ($keys) {
@@ -22,7 +22,7 @@ $batchFunction = function ($keys) {
 };
 ```
 
-Then to build your data loader, all you need to do is feed the batch function into the static build method of the DataLoader class.
+To build your data loader, feed the batch function into the static build method of the DataLoader class, and you're done.
 
 ```php
 $loader = BatchingDataLoader::build($batchFunction);
@@ -160,8 +160,9 @@ $batchFunction = function ($keys) {
         return $cached;
     }
 
-    // Load the remaining users from the database.
-    $loaded = User::findMany($keys);
+    // Load the remaining users from the database and index by
+    // primary key so we can merge the data with the cache.
+    $loaded = User::findMany($keys)->keyBy('id')->all();
 
     // Put the loaded users in the application cache for 60 minutes.
     Cache::tags('users')->putMany($loaded, 60);
