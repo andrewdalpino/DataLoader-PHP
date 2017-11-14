@@ -7,7 +7,7 @@ use InvalidArgumentException;
 class BatchingDataLoader
 {
     /**
-     * The entities to buffer.
+     * The entity key buffer.
      *
      * @var  \AndrewDalpino\DataLoader\Buffer  $buffer
      */
@@ -194,7 +194,7 @@ class BatchingDataLoader
     }
 
     /**
-     * Load all buffered entities that aren't already in the request cache.
+     * Fetch all buffered entities that aren't already in the request cache.
      *
      * @throws \AndrewDalpino\DataLoader\InvalidArgumentException
      * @return \AndrewDalpino\DataLoader\RequestCache
@@ -203,10 +203,8 @@ class BatchingDataLoader
     {
         $queue = $this->buffer->diffKeys($this->loaded);
 
-        while ($queue->count() > 0) {
-            $batch = $queue->take($this->options['batch_size']);
-
-            $batch = $batch->keyBy(function ($entity, $key) {
+        while ($queue->count()) {
+            $batch = $queue->take($this->options['batch_size'])->keyBy(function ($entity, $key) {
                 return $this->convertToStorageKey($key);
             });
 
@@ -217,9 +215,7 @@ class BatchingDataLoader
                     . gettype($loaded) . ' found instead.');
             }
 
-            $results = new ResultSet($loaded);
-
-            $results = $results->keyBy(function ($entity, $index) {
+            $results = ResultSet::collect($loaded)->keyBy(function ($entity, $index) {
                 $key = call_user_func($this->cacheKeyFunction, $entity, $index);
 
                 return $this->convertToCacheKey($key);

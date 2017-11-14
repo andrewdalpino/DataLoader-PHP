@@ -8,7 +8,7 @@ use ArrayAccess;
 use Traversable;
 use Countable;
 
-class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
+abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
 {
     /**
      * The items contained in the collection.
@@ -23,7 +23,7 @@ class InMemoryCollection implements IteratorAggregate, ArrayAccess, Countable
      * @param  mixed  $items
      * @return void
      */
-    public function __construct($items = [])
+    protected function __construct($items = [])
     {
         $this->items = $this->getArrayableItems($items);
     }
