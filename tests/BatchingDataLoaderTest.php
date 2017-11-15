@@ -13,12 +13,12 @@ class BatchingDataLoaderTest extends TestCase
     public function __construct()
     {
         $data = [
-            0 => ['id' => 1, 'name' => 'foo'],
-            1 => ['id' => 2, 'name' => 'bar'],
-            2 => ['id' => 3, 'name' => 'baz'],
-            3 => ['id' => '00000000-0000-0000-0000-000000000001', 'name' => 'andrew'],
-            4 => ['id' => 'some:thing', 'name' => ''],
-            5 => ['id' => 5.5, 'name' => 'rhu barb'],
+            ['id' => 1, 'name' => 'foo'],
+            ['id' => 2, 'name' => 'bar'],
+            ['id' => 3, 'name' => 'baz'],
+            ['id' => '00000000-0000-0000-0000-000000000001', 'name' => 'andrew'],
+            ['id' => 'some:thing', 'name' => ''],
+            ['id' => 5.5, 'name' => 'rhu barb'],
         ];
 
         $cacheKeyFunction = function ($entity, $key) {
@@ -45,6 +45,8 @@ class BatchingDataLoaderTest extends TestCase
 
     public function test_batch_keys_and_load_entities()
     {
+        $this->dataloader->flush();
+
         $this->dataloader->batch(1);
         $this->dataloader->batch([2, 3, '00000000-0000-0000-0000-000000000001', 'some:thing']);
 
@@ -59,8 +61,6 @@ class BatchingDataLoaderTest extends TestCase
             ':some:thing' => ['id' => 'some:thing', 'name' => ''],
         ], $many);
         $this->assertFalse(in_array(['id' => 2, 'name' => 'bar'], $many));
-
-        $this->dataloader->flush();
     }
 
     public function test_load_now()
@@ -77,7 +77,9 @@ class BatchingDataLoaderTest extends TestCase
 
     public function test_prime_cache()
     {
-        $this->dataloader->prime([0 => ['id' => 'foo', 'name' => 'donny']]);
+        $this->dataloader->flush();
+
+        $this->dataloader->prime([['id' => 'foo', 'name' => 'donny']]);
 
         $entity = $this->dataloader->load('foo');
 
@@ -88,12 +90,12 @@ class BatchingDataLoaderTest extends TestCase
         $entity = $this->dataloader->load('foo');
 
         $this->assertEquals(['id' => 'foo', 'name' => 'donny'], $entity);
-
-        $this->dataloader->flush();
     }
 
     public function test_forget_cache_item()
     {
+        $this->dataloader->flush();
+
         $this->dataloader->batch(2);
 
         $entity = $this->dataloader->load(2);
@@ -105,12 +107,12 @@ class BatchingDataLoaderTest extends TestCase
         $entity = $this->dataloader->load(2);
 
         $this->assertTrue(is_null($entity));
-
-        $this->dataloader->flush();
     }
 
     public function test_flush_cache()
     {
+        $this->dataloader->flush();
+
         $this->dataloader->batch([1, 2, 3]);
 
         $entities = $this->dataloader->load([1, 2, 3]);
@@ -122,12 +124,12 @@ class BatchingDataLoaderTest extends TestCase
         $entities = $this->dataloader->load([1, 2, 3]);
 
         $this->assertEquals(0, count($entities));
-
-        $this->dataloader->flush();
     }
 
     public function test_load_entity_from_cold_cache()
     {
+        $this->dataloader->flush();
+
         $entity = $this->dataloader->load(1);
 
         $this->assertTrue(is_null($entity));
@@ -151,5 +153,35 @@ class BatchingDataLoaderTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         $entity = $dataloader->load('00000000-0000-0000-0000-000000000001');
+    }
+
+    public function test_force_refetch()
+    {
+        $this->dataloader->flush();
+
+        $this->dataloader->prime([['id' => 1, 'name' => 'primed']]);
+
+        $entity = $this->dataloader->load(1);
+
+        $this->assertEquals(['id' => 1, 'name' => 'primed'], $entity);
+
+        $entity = $this->dataloader->forget(1)->loadNow(1);
+
+        $this->assertEquals(['id' => 1, 'name' => 'foo'], $entity);
+    }
+
+    public function test_force_prime()
+    {
+        $this->dataloader->flush();
+
+        $entity = $this->dataloader->loadNow(1);
+
+        $this->assertEquals(['id' => 1, 'name' => 'foo'], $entity);
+
+        $this->dataloader->forget(1)->prime([['id' => 1, 'name' => 'primed']]);
+
+        $entity = $this->dataloader->load(1);
+
+        $this->assertEquals(['id' => 1, 'name' => 'primed'], $entity);
     }
 }

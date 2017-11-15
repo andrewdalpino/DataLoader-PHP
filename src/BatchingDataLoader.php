@@ -144,15 +144,11 @@ class BatchingDataLoader
     /**
      * Prime the request cache.
      *
-     * @param  mixed  $entities
+     * @param  iterable  $entities
      * @return self
      */
-    public function prime($entities)
+    public function prime(iterable $entities)
     {
-        if (! is_iterable($entities)) {
-            $entities = [$entities];
-        }
-
         foreach ($entities as $index => $entity) {
             $key = call_user_func($this->cacheKeyFunction, $entity, $index);
 

@@ -124,7 +124,7 @@ In this example, whenever the *author* field on a Post object is requested in a 
 ### Loading entities from outside of the batch function
 Sometimes, the batch function is not the most efficient route to accessing a particular dataset. Under other circumstances, such as non-primary key lookups, it's just not possible.
 
-When you need to load an entity into the request cache from another source, other than the batch function, you may do so by calling the `prime()` method on the data loader instance. The `prime()` method takes either a single entity or an array of entities as an argument, and will be keyed by the same cache key function as entities loaded with `batch()`.
+When you need to load an entity into the request cache from another source, other than the batch function, you may do so by calling the `prime()` method on the data loader instance. The `prime()` method takes an array of `$entities` that you wish to prime as an argument. Each primed entity will be keyed by the same cache key function as the ones loaded with `batch()`.
 
 ```php
 $user = User::find(1);
