@@ -139,7 +139,7 @@ Once the cache has been primed, you may call `load()` on the entity's key to loa
 ```php
 $user = User::find('qDkX7');
 
-$userLoader->forget('qDkX7')->prime($user);
+$userLoader->forget('qDkX7')->prime([$user]);
 ```
 
 ### Flushing the cache
