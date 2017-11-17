@@ -110,7 +110,7 @@ class BatchingDataLoader
 
         $key = $this->convertToCacheKey($key);
 
-        return $this->execute()->get($key, null);
+        return $this->updateCache()->get($key, null);
     }
 
     /**
@@ -125,7 +125,7 @@ class BatchingDataLoader
             return $this->convertToCacheKey($key);
         }, $keys);
 
-        return $this->execute()->filter(function ($value, $key) use ($keys) {
+        return $this->updateCache()->filter(function ($value, $key) use ($keys) {
             return in_array($key, $keys);
         })->all();
     }
@@ -195,7 +195,7 @@ class BatchingDataLoader
      * @throws \AndrewDalpino\DataLoader\InvalidArgumentException
      * @return \AndrewDalpino\DataLoader\RequestCache
      */
-    protected function execute() : RequestCache
+    protected function updateCache() : RequestCache
     {
         $queue = $this->buffer->diffKeys($this->loaded);
 
