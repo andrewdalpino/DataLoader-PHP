@@ -61,7 +61,6 @@ abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Cou
      * Get an item from the collection by key.
      *
      * @param  mixed  $key
-     * @param  mixed  $default
      * @return mixed
      */
     public function get($key)
@@ -71,6 +70,21 @@ abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Cou
         }
 
         return null;
+    }
+
+    /**
+     * Get multiple items from the collection by key at once.
+     *
+     * @param  mixed  $keys
+     * @return array
+     */
+    public function getMany($keys) : array
+    {
+        $keys = array_flip($this->getArrayableItems($keys));
+
+        return $this->filter(function ($value, $key) use ($keys) {
+            return array_key_exists($key, $keys);
+        })->all();
     }
 
     /**

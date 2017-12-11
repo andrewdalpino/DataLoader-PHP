@@ -7,14 +7,17 @@ use PHPUnit\Framework\TestCase;
 
 class PerformanceTest extends TestCase
 {
-    const READ_TARGET = 0.0005;
-    const FILTER_TARGET = 0.005;
+    const READ_TARGET = 0.0005; // seconds
+    const READ_MULTIPLE_TARGET = 0.0008; // seconds
+    const DATASET_SIZE = 1000;
+    const TEST_SIZE = 100;
+    const ENTITY_BYTES = 2048;
 
-    public function test_multiple_insert_and_read_performance()
+    public function test_single_insert_and_single_read_performance()
     {
         $collection = Collection::mock();
 
-        $data = $this->generate_data(1000);
+        $data = $this->generate_data(self::DATASET_SIZE);
 
         $test = array_keys($data);
 
@@ -34,16 +37,16 @@ class PerformanceTest extends TestCase
 
         $time = round(microtime(true) - $start, 8);
 
-        echo "\n" . 'InMemoryCollection (Multiple Insert + Multiple Read) Performance: ' . $time . 's';
+        echo "\n" . 'InMemoryCollection (Single Insert + Single Read) Performance: ' . $time . 's';
 
         $this->assertTrue($time <= self::READ_TARGET);
     }
 
-    public function test_multiple_insert_and_filter_performance()
+    public function test_single_insert_and_multiple_read_performance()
     {
         $collection = Collection::mock();
 
-        $data = $this->generate_data(1000);
+        $data = $this->generate_data(self::DATASET_SIZE);
 
         $test = array_keys($data);
 
@@ -57,21 +60,19 @@ class PerformanceTest extends TestCase
             $collection->put($key, $value);
         }
 
-        $collection->filter(function ($key, $value) use ($test) {
-            return in_array($key, $test);
-        }, ARRAY_FILTER_USE_BOTH);
+        $collection->getMany($test);
 
         $time = round(microtime(true) - $start, 8);
 
-        echo "\n" . 'InMemoryCollection (Multiple Insert + Filter) Performance: ' . $time . 's';
+        echo "\n" . 'InMemoryCollection (Single Insert + Multiple Read) Performance: ' . $time . 's';
 
-        $this->assertTrue($time <= self::FILTER_TARGET);
+        $this->assertTrue($time <= self::READ_MULTIPLE_TARGET);
     }
 
     public function generate_data(int $x = 1000, array $data = []) : array
     {
         for ($i = 0; $i < $x; $i++) {
-            $data[uniqid()] = bin2hex(random_bytes(2048));
+            $data[uniqid()] = bin2hex(random_bytes(self::ENTITY_BYTES));
         }
         return $data;
     }

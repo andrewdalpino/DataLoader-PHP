@@ -110,7 +110,7 @@ class BatchingDataLoader
 
         $key = $this->convertToCacheKey($key);
 
-        return $this->updateCache()->get($key, null);
+        return $this->updateCache()->get($key);
     }
 
     /**
@@ -125,9 +125,7 @@ class BatchingDataLoader
             return $this->convertToCacheKey($key);
         }, $keys);
 
-        return $this->updateCache()->filter(function ($value, $key) use ($keys) {
-            return in_array($key, $keys);
-        })->all();
+        return $this->updateCache()->getMany($keys);
     }
 
     /**
