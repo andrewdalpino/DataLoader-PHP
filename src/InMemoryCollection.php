@@ -47,10 +47,10 @@ abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Cou
      * Put an item in the collection by key.
      *
      * @param  mixed  $key
-     * @param  mixed  $value
+     * @param  mixed|null  $value
      * @return self
      */
-    public function put($key, $value)
+    public function put($key, $value = null)
     {
         $this->offsetSet($key, $value);
 
@@ -82,20 +82,7 @@ abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Cou
     {
         $keys = array_flip($this->getArrayableItems($keys));
 
-        return $this->filter(function ($value, $key) use ($keys) {
-            return array_key_exists($key, $keys);
-        })->all();
-    }
-
-    /**
-     * Run a filter over each of the items in the collection.
-     *
-     * @param  callable  $filter
-     * @return static
-     */
-    public function filter(callable $filter)
-    {
-        return new static(array_filter($this->items, $filter, ARRAY_FILTER_USE_BOTH));
+        return array_intersect_key($this->items, $keys);
     }
 
     /**

@@ -90,7 +90,7 @@ class BatchingDataLoader
         foreach ((array) $keys as $index => $key) {
             $key = $this->convertToCacheKey($key);
 
-            $this->buffer->put($key, null);
+            $this->buffer->put($key);
         }
 
         return $this;
@@ -206,7 +206,7 @@ class BatchingDataLoader
 
             if (! is_iterable($loaded)) {
                 throw new InvalidArgumentException('Batch function must return an array or iterable object, '
-                    . gettype($loaded) . ' found instead.');
+                    . gettype($loaded) . ' found.');
             }
 
             $results = ResultSet::collect($loaded)->keyBy(function ($entity, $index) {
@@ -260,7 +260,7 @@ class BatchingDataLoader
     {
         if (! is_int($key) && ! is_string($key)) {
             throw new InvalidArgumentException('Key must be an integer or string type, '
-                . gettype($key) . ' found instead.');
+                . gettype($key) . ' found.');
         }
     }
 }

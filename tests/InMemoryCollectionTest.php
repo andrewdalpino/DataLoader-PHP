@@ -36,6 +36,15 @@ class InMemoryCollectionTest extends TestCase
         $this->assertEquals('bar', $entity);
     }
 
+    public function test_get_multiple_items_from_collection()
+    {
+        $collection = TestCollection::mock(['aaaa' => 'foo', 'bbbb' => 'bar', 'cccc' => 'baz']);
+
+        $entities = $collection->getMany(['bbbb', 'cccc']);
+
+        $this->assertTrue(count($entities) === 2);
+    }
+
     public function test_get_all_items()
     {
         $collection = TestCollection::mock(['foo', 'bar', 'baz']);
@@ -77,34 +86,6 @@ class InMemoryCollectionTest extends TestCase
         $collection->flush();
 
         $this->assertEquals(0, $collection->count());
-    }
-
-    public function test_filter_cache_by_key()
-    {
-        $collection = TestCollection::mock([
-            'aaaa' => 'foo',
-            'bbbb' => 'bar',
-        ]);
-
-        $collection = $collection->filter(function ($value, $key) {
-            return $key === 'aaaa';
-        });
-
-        $this->assertEquals(['aaaa' => 'foo'], $collection->all());
-    }
-
-    public function test_filter_cache_by_value()
-    {
-        $collection = TestCollection::mock([
-            'aaaa' => 'foo',
-            'bbbb' => 'bar',
-        ]);
-
-        $collection = $collection->filter(function ($value, $key) {
-            return $value === 'bar';
-        });
-
-        $this->assertEquals(['bbbb' => 'bar'], $collection->all());
     }
 
     public function test_merge_items_with_collection()
