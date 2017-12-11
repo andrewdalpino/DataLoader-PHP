@@ -147,20 +147,18 @@ abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Cou
     /**
      * Key the reults using the return value from a callback.
      *
-     * @param  callable  $keyBy
+     * @param  callable  $keyByFunction
      * @return self
      */
-    public function keyBy(callable $keyBy)
+    public function keyBy(callable $keyByFunction)
     {
-        $results = [];
+        foreach ($this->items as $key => $value) {
+            $key = call_user_func($keyByFunction, $value, $key);
 
-        foreach ($this->items as $key => $item) {
-            $resolvedKey = $keyBy($item, $key);
-
-            $results[$resolvedKey] = $item;
+            $keyed[$key] = $value;
         }
 
-        return new static($results);
+        return new static($keyed);
     }
 
     /**
@@ -271,7 +269,7 @@ abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Cou
     }
 
     /**
-     * Results array of items from Collection or Arrayable.
+     * Convert arrayble items into a standard array.
      *
      * @param  mixed  $items
      * @return array
