@@ -7,9 +7,6 @@ A thin caching and data access layer that goes over your existing storage layer 
 - Storage layer agnostic (use with Redis, MySQL, MongoDB, a REST endpoint, anything you want)
 - Framework agnostic
 
-### Performance
-The `InMemoryCollection` used by DataLoader essentially implements a hash table under the hood which means Buffer and Cache lookups are done in `O(1)` time. This data structure has been tested to perform 1000 single inserts + 100 single reads in 0.0005 seconds or less.
-
 ## Installation
 Install DataLoader PHP using composer:
 ```sh
