@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 class PerformanceTest extends TestCase
 {
     const READ_TARGET = 0.0005; // seconds
-    const READ_MULTIPLE_TARGET = 0.0008; // seconds
+    const READ_MULTIPLE_TARGET = 0.0005; // seconds
     const DATASET_SIZE = 1000;
     const TEST_SIZE = 1000;
     const ENTITY_BYTES = 2048;
