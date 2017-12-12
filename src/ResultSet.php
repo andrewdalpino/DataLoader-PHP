@@ -7,10 +7,10 @@ class ResultSet extends InMemoryCollection
     /**
      * Collect the results of a query.
      *
-     * @param  interable  $results
+     * @param  mixed  $results
      * @return self
      */
-    public static function collect(iterable $results = [])
+    public static function collect($results = [])
     {
         return new self($results);
     }

@@ -5,7 +5,7 @@ namespace AndrewDalpino\DataLoader;
 class RequestCache extends InMemoryCollection
 {
     /**
-     * Initialize the cache.
+     * Initialize the request cache.
      *
      * @return self
      */

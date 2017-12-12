@@ -103,7 +103,9 @@ abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Cou
      */
     public function merge($items)
     {
-        $this->items = array_merge($this->items, $this->getArrayableItems($items));
+        $items = $this->getArrayableItems($items);
+
+        $this->items = array_merge($this->items, $items);
 
         return $this;
     }
@@ -275,13 +277,13 @@ abstract class InMemoryCollection implements IteratorAggregate, ArrayAccess, Cou
      * @param  mixed  $items
      * @return array
      */
-    protected function getArrayableItems($items)
+    protected function getArrayableItems($items) : array
     {
         if (is_array($items)) {
             return $items;
-        } elseif ($items instanceof self) {
+        } else if ($items instanceof self) {
             return $items->all();
-        } elseif ($items instanceof Traversable) {
+        } else if ($items instanceof Traversable) {
             return iterator_to_array($items);
         }
 
