@@ -4,6 +4,7 @@ namespace AndrewDalpino\DataLoader\tests;
 
 use AndrewDalpino\DataLoader\BatchingDataLoader;
 use PHPUnit\Framework\TestCase;
+use UnexpectedValueException;
 
 class BatchingDataLoaderTest extends TestCase
 {
@@ -41,10 +42,21 @@ class BatchingDataLoaderTest extends TestCase
     public function test_make_batching_dataloader()
     {
         $dataloader = BatchingDataLoader::make(function ($keys) {
-            return null;
+            return [];
         });
 
         $this->assertTrue($dataloader instanceof BatchingDataLoader);
+    }
+
+    public function test_bad_batch_function()
+    {
+        $dataloader = BatchingDataLoader::make(function ($keys) {
+            return 'Bad';
+        });
+
+        $this->expectException(UnexpectedValueException::class);
+
+        $dataloader->batch('whatever')->load('whatever');
     }
 
     public function test_batch_keys()

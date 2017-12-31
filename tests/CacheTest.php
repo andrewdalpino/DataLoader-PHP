@@ -4,6 +4,7 @@ namespace AndrewDalpino\DataLoader\tests;
 
 use AndrewDalpino\DataLoader\Cache;
 use PHPUnit\Framework\TestCase;
+use InvalidArgumentException;
 
 class CacheTest extends TestCase
 {
@@ -43,6 +44,13 @@ class CacheTest extends TestCase
 
         $this->assertEquals(6, $this->cache->count());
         $this->assertTrue($this->cache->has(4));
+    }
+
+    public function test_put_bad_key_in_cache()
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->cache->put(['bad'], ['color' => 'Black']);
     }
 
     public function test_get_item_from_cache()
