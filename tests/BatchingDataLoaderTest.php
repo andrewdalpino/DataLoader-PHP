@@ -4,27 +4,27 @@ namespace AndrewDalpino\DataLoader\tests;
 
 use AndrewDalpino\DataLoader\BatchingDataLoader;
 use PHPUnit\Framework\TestCase;
-use InvalidArgumentException;
 
 class BatchingDataLoaderTest extends TestCase
 {
     protected $dataloader;
 
-    public function __construct()
+    public function setUp()
     {
         $data = [
-            ['id' => 1, 'name' => 'foo'],
-            ['id' => 2, 'name' => 'bar'],
-            ['id' => 3, 'name' => 'baz'],
-            ['id' => '00000000-0000-0000-0000-000000000001', 'name' => 'andrew'],
-            ['id' => 'some:thing', 'name' => ''],
-            ['id' => 5.5, 'name' => 'rhu barb'],
+            ['id' => 1, 'name' => 'Andrew'],
+            ['id' => 2, 'name' => 'Frank'],
+            ['id' => 3, 'name' => 'Ken'],
+            ['id' => 4, 'name' => 'Julie'],
+            ['id' => 'aaaa', 'name' => 'Rich'],
+            ['id' => 'bbbb', 'name' => 'Saoirse'],
         ];
 
-        $cacheKeyFunction = function ($entity, $key) {
+        $cacheKeyFunction = function ($entity, $index) {
             return $entity['id'];
         };
 
+        // Simulate a database.
         $batchFunction = function ($keys) use ($data) {
             return array_filter($data, function ($entity, $key) use ($keys) {
                 return in_array($entity['id'], $keys);
@@ -35,153 +35,61 @@ class BatchingDataLoaderTest extends TestCase
             'batch_size' => 3
         ];
 
-        $this->dataloader = BatchingDataLoader::make($batchFunction, $cacheKeyFunction);
+        $this->dataloader = new BatchingDataLoader($batchFunction, $cacheKeyFunction, $options);
     }
 
-    public function test_build_data_loader()
+    public function test_make_batching_dataloader()
     {
-        $this->assertTrue($this->dataloader instanceof BatchingDataLoader);
+        $dataloader = BatchingDataLoader::make(function ($keys) {
+            return null;
+        });
+
+        $this->assertTrue($dataloader instanceof BatchingDataLoader);
     }
 
-    public function test_batch_keys_and_load_entities()
+    public function test_batch_keys()
     {
-        $this->dataloader->flush();
-
         $this->dataloader->batch(1);
-        $this->dataloader->batch([2, 3, '00000000-0000-0000-0000-000000000001', 'some:thing']);
 
-        $entity = $this->dataloader->load(2);
-        $many = $this->dataloader->load([1, 3, '00000000-0000-0000-0000-000000000001', 'some:thing']);
+        $this->assertEquals(1, $this->dataloader->buffer()->count());
 
-        $this->assertEquals(['id' => 2, 'name' => 'bar'], $entity);
-        $this->assertEquals([
-            ':1' => ['id' => 1, 'name' => 'foo'],
-            ':3' => ['id' => 3, 'name' => 'baz'],
-            ':00000000-0000-0000-0000-000000000001' => ['id' => '00000000-0000-0000-0000-000000000001', 'name' => 'andrew'],
-            ':some:thing' => ['id' => 'some:thing', 'name' => ''],
-        ], $many);
-        $this->assertFalse(in_array(['id' => 2, 'name' => 'bar'], $many));
+        $this->dataloader->batch([1, 2, 3]);
+
+        $this->assertEquals(4, $this->dataloader->buffer()->count());
+
+        $keys = $this->dataloader->buffer()->deduplicate()->dump();
+
+        $this->assertEquals([1, 2, 3], $keys);
     }
 
-    public function test_load_now()
+    public function test_load_single_entity()
     {
-        $this->dataloader->flush();
+        $entity = $this->dataloader->batch(3)->load(3);
 
-        $entity = $this->dataloader->loadNow(1);
+        $this->assertEquals(3, $entity['id']);
+        $this->assertEquals('Ken', $entity['name']);
+        $this->assertEquals(null, $this->dataloader->load(1));
+    }
 
-        $many = $this->dataloader->loadNow([2, 3]);
+    public function test_load_multiple_entities()
+    {
+        $loaded = $this->dataloader->batch([1, 2, 'aaaa'])->loadMany([1, 2, 'aaaa', 'bbbb']);
 
-        $this->assertEquals(['id' => 1, 'name' => 'foo'], $entity);
-        $this->assertEquals([':2' => ['id' => 2, 'name' => 'bar'], ':3' => ['id' => 3, 'name' => 'baz']], $many);
+        $this->assertEquals(3, count($loaded));
+        $this->assertEquals('Andrew', $loaded[1]['name']);
+        $this->assertEquals('Frank', $loaded[2]['name']);
+        $this->assertEquals('Rich', $loaded['aaaa']['name']);
+        $this->assertFalse(isset($loaded['bbbb']));
     }
 
     public function test_prime_cache()
     {
-        $this->dataloader->flush();
+        $this->dataloader->prime(['id' => 6, 'name' => 'Francois']);
 
-        $this->dataloader->prime([['id' => 'foo', 'name' => 'donny']]);
+        $this->assertEquals(1, $this->dataloader->cache()->count());
 
-        $entity = $this->dataloader->load('foo');
+        $entity = $this->dataloader->load(6);
 
-        $this->assertEquals(['id' => 'foo', 'name' => 'donny'], $entity);
-
-        $this->dataloader->prime([0 => ['id' => 'foo', 'name' => 'sue']]);
-
-        $entity = $this->dataloader->load('foo');
-
-        $this->assertEquals(['id' => 'foo', 'name' => 'donny'], $entity);
-    }
-
-    public function test_forget_cache_item()
-    {
-        $this->dataloader->flush();
-
-        $this->dataloader->batch(2);
-
-        $entity = $this->dataloader->load(2);
-
-        $this->assertTrue(! is_null($entity));
-
-        $this->dataloader->forget(2);
-
-        $entity = $this->dataloader->load(2);
-
-        $this->assertTrue(is_null($entity));
-    }
-
-    public function test_flush_cache()
-    {
-        $this->dataloader->flush();
-
-        $this->dataloader->batch([1, 2, 3]);
-
-        $entities = $this->dataloader->load([1, 2, 3]);
-
-        $this->assertEquals(3, count($entities));
-
-        $this->dataloader->flush();
-
-        $entities = $this->dataloader->load([1, 2, 3]);
-
-        $this->assertEquals(0, count($entities));
-    }
-
-    public function test_load_entity_from_cold_cache()
-    {
-        $this->dataloader->flush();
-
-        $entity = $this->dataloader->load(1);
-
-        $this->assertTrue(is_null($entity));
-    }
-
-    public function test_bad_cache_key()
-    {
-        $this->expectException(InvalidArgumentException::class);
-
-        $this->dataloader->batch([5.5]);
-    }
-
-    public function test_bad_batch_function()
-    {
-        $dataloader = BatchingDataLoader::make(function ($keys) {
-            return 'bad';
-        });
-
-        $dataloader->batch(['00000000-0000-0000-0000-000000000001']);
-
-        $this->expectException(InvalidArgumentException::class);
-
-        $entity = $dataloader->load('00000000-0000-0000-0000-000000000001');
-    }
-
-    public function test_force_refetch()
-    {
-        $this->dataloader->flush();
-
-        $this->dataloader->prime([['id' => 1, 'name' => 'primed']]);
-
-        $entity = $this->dataloader->load(1);
-
-        $this->assertEquals(['id' => 1, 'name' => 'primed'], $entity);
-
-        $entity = $this->dataloader->forget(1)->loadNow(1);
-
-        $this->assertEquals(['id' => 1, 'name' => 'foo'], $entity);
-    }
-
-    public function test_force_prime()
-    {
-        $this->dataloader->flush();
-
-        $entity = $this->dataloader->loadNow(1);
-
-        $this->assertEquals(['id' => 1, 'name' => 'foo'], $entity);
-
-        $this->dataloader->forget(1)->prime([['id' => 1, 'name' => 'primed']]);
-
-        $entity = $this->dataloader->load(1);
-
-        $this->assertEquals(['id' => 1, 'name' => 'primed'], $entity);
+        $this->assertEquals('Francois', $entity['name']);
     }
 }

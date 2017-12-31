@@ -7,16 +7,16 @@ use InvalidArgumentException;
 class BatchingDataLoader
 {
     /**
-     * The entity key buffer.
+     * The key buffer.
      *
      * @var  \AndrewDalpino\DataLoader\Buffer  $buffer
      */
     protected $buffer;
 
     /**
-     * The current request cycle cache.
+     * The request cache.
      *
-     * @var  \AndrewDalpino\DataLoader\RequestCache  $loaded
+     * @var  \AndrewDalpino\DataLoader\Cache  $loaded
      */
     protected $loaded;
 
@@ -39,27 +39,25 @@ class BatchingDataLoader
      *
      * @var  array  $options
      */
-    protected $options;
+    protected $options = [
+        'batch_size' => 1000,
+    ];
 
     /**
-     * Factory build method.
+     * Factory method.
      *
      * @param  callable  $batchFunction
      * @param  callable|null  $cacheKeyFunction
      * @param  array  $options
      * @return self
      */
-    public static function make(callable $batchFunction, callable $cacheKeyFunction = null, array $options = [])
+    public static function make(callable $batchFunction, callable $cacheKeyFunction = null, array $options = []) : BatchingDataLoader
     {
         if (is_null($cacheKeyFunction)) {
             $cacheKeyFunction = function ($entity, $index) {
                 return $entity->id ?? $entity['id'] ?? $index;
             };
         }
-
-        $options = array_merge([
-            'batch_size' => 1000
-        ], $options);
 
         return new self($batchFunction, $cacheKeyFunction, $options);
     }
@@ -70,13 +68,13 @@ class BatchingDataLoader
      * @param  array  $options
      * @return void
      */
-    protected function __construct(callable $batchFunction, callable $cacheKeyFunction, array $options)
+    public function __construct(callable $batchFunction, callable $cacheKeyFunction, array $options)
     {
+        $this->buffer = Buffer::init();
+        $this->loaded = Cache::init();
         $this->batchFunction = $batchFunction;
         $this->cacheKeyFunction = $cacheKeyFunction;
-        $this->options = $options;
-        $this->buffer = Buffer::init();
-        $this->loaded = RequestCache::init();
+        $this->options = array_replace($this->options, $options);
     }
 
     /**
@@ -85,12 +83,10 @@ class BatchingDataLoader
      * @param  mixed  $keys
      * @return self
      */
-    public function batch($keys)
+    public function batch($keys) : BatchingDataLoader
     {
-        foreach ((array) $keys as $index => $key) {
-            $key = $this->convertToCacheKey($key);
-
-            $this->buffer->put($key);
+        foreach ((array) $keys as $key) {
+            $this->buffer()->enqueue($key);
         }
 
         return $this;
@@ -104,13 +100,7 @@ class BatchingDataLoader
      */
     public function load($key)
     {
-        if (is_array($key)) {
-            return $this->loadMany($key);
-        }
-
-        $key = $this->convertToCacheKey($key);
-
-        return $this->updateCache()->get($key);
+        return $this->updateCache()->cache()->get($key);
     }
 
     /**
@@ -121,146 +111,76 @@ class BatchingDataLoader
      */
     public function loadMany(array $keys) : array
     {
-        $keys = array_map(function ($key) {
-            return $this->convertToCacheKey($key);
-        }, $keys);
-
-        return $this->updateCache()->getMany($keys);
+        return $this->updateCache()->cache()->mget($keys);
     }
 
     /**
-     * Bypass the buffer and load entities immediately.
+     * Prime the cache with a preloaded entity.
      *
-     * @param  mixed  $keys
-     * @return mixed|null
-     */
-    public function loadNow($keys)
-    {
-        return $this->batch($keys)->load($keys);
-    }
-
-    /**
-     * Prime the request cache.
-     *
-     * @param  iterable  $entities
+     * @param  mixed  $entity
      * @return self
      */
-    public function prime(iterable $entities)
+    public function prime($entity) : BatchingDataLoader
     {
-        foreach ($entities as $index => $entity) {
-            $key = call_user_func($this->cacheKeyFunction, $entity, $index);
+        $key = call_user_func($this->cacheKeyFunction, $entity, null);
 
-            $key = $this->convertToCacheKey($key);
-
-            if (! $this->loaded->has($key)) {
-                $this->loaded->put($key, $entity);
-            }
+        if (! $this->cache()->has($key)) {
+            $this->cache()->put($key, $entity);
         }
 
         return $this;
     }
 
     /**
-     * Forget a single entity stored in the request cache.
+     * Return the buffer.
      *
-     * @param  mixed  $key
-     * @return self
+     * @return \AndrewDalpino\DataLoader\Buffer
      */
-    public function forget($key)
+    public function buffer() : Buffer
     {
-        $key = $this->convertToCacheKey($key);
-
-        $this->loaded->forget($key);
-
-        return $this;
+        return $this->buffer;
     }
 
     /**
-     * Flush the entire request cache.
+     * Return the cache.
      *
-     * @return self
+     * @return \AndrewDalpino\DataLoader\Cache
      */
-    public function flush()
+    public function cache() : Cache
     {
-        $this->loaded->flush();
-
-        return $this;
-    }
-
-    /**
-     * Fetch all buffered entities that aren't already in the request cache.
-     *
-     * @throws \AndrewDalpino\DataLoader\InvalidArgumentException
-     * @return \AndrewDalpino\DataLoader\RequestCache
-     */
-    protected function updateCache() : RequestCache
-    {
-        $queue = $this->buffer->diffKeys($this->loaded);
-
-        while ($queue->count()) {
-            $batch = $queue->take($this->options['batch_size'])->keyBy(function ($entity, $key) {
-                return $this->convertToStorageKey($key);
-            });
-
-            $loaded = call_user_func($this->batchFunction, $batch->keys());
-
-            if (! is_iterable($loaded)) {
-                throw new InvalidArgumentException('Batch function must return an array or iterable object, '
-                    . gettype($loaded) . ' found.');
-            }
-
-            $results = ResultSet::collect($loaded)->keyBy(function ($entity, $index) {
-                $key = call_user_func($this->cacheKeyFunction, $entity, $index);
-
-                return $this->convertToCacheKey($key);
-            });
-
-            $this->loaded->merge($results);
-        }
-
-        $this->buffer->flush();
-
         return $this->loaded;
     }
 
     /**
-     * Convert the given key to a cache safe key.
+     * Fetch all buffered entities that aren't already in the cache.
      *
-     * @param  mixed  $key
-     * @return string
-     */
-    protected function convertToCacheKey($key) : string
-    {
-        $this->checkKey($key);
-
-        return (string) ':' . $key;
-    }
-
-    /**
-     * Convert the cache key back to a storage key.
-     *
-     * @param  string  $key
-     * @return mixed
-     */
-    protected function convertToStorageKey(string $key)
-    {
-        $key = substr(strstr($key, ':'), 1);
-
-        return is_numeric($key) ? (int) $key : $key;
-    }
-
-    /**
-     * Validate the key.
-     *
-     * @param  mixed  $key
      * @throws \InvalidArgumentException
-     * @return void
+     * @return self
      */
-    protected function checkKey($key) : void
+    protected function updateCache() : BatchingDataLoader
     {
-        if (! is_int($key) && ! is_string($key)) {
-            throw new InvalidArgumentException('Key must be an integer or string type, '
-                . gettype($key) . ' found.');
+        $queue = $this->buffer()->deduplicate()->diff($this->cache()->keys());
+
+        while ($queue->count()) {
+            $batch = $queue->dequeue($this->options['batch_size']);
+
+            $loaded = call_user_func($this->batchFunction, $batch);
+
+            if (! is_iterable($loaded)) {
+                throw new InvalidArgumentException('Batch function must return an array or iterable, ' . gettype($loaded) . ' found.');
+            }
+
+            foreach ($loaded as $index => $entity) {
+                $key = call_user_func($this->cacheKeyFunction, $entity, $index);
+
+                $loaded[$key] = $entity;
+            }
+
+            $this->cache()->merge($loaded);
         }
+
+        $this->buffer()->flush();
+
+        return $this;
     }
 }
