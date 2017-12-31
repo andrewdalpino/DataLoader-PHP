@@ -44,6 +44,26 @@ class BatchingDataLoader
     ];
 
     /**
+     * Get the buffer instance.
+     *
+     * @return \AndrewDalpino\DataLoader\Buffer
+     */
+    public function buffer() : Buffer
+    {
+        return $this->buffer;
+    }
+
+    /**
+     * Get the cache instance.
+     *
+     * @return \AndrewDalpino\DataLoader\Cache
+     */
+    public function cache() : Cache
+    {
+        return $this->loaded;
+    }
+
+    /**
      * Factory method.
      *
      * @param  callable  $batchFunction
@@ -129,26 +149,6 @@ class BatchingDataLoader
         }
 
         return $this;
-    }
-
-    /**
-     * Return the buffer.
-     *
-     * @return \AndrewDalpino\DataLoader\Buffer
-     */
-    public function buffer() : Buffer
-    {
-        return $this->buffer;
-    }
-
-    /**
-     * Return the cache.
-     *
-     * @return \AndrewDalpino\DataLoader\Cache
-     */
-    public function cache() : Cache
-    {
-        return $this->loaded;
     }
 
     /**

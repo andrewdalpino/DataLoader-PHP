@@ -2,12 +2,12 @@
 
 namespace AndrewDalpino\DataLoader;
 
+use InvalidArgumentException;
 use IteratorAggregate;
 use ArrayIterator;
-use ArrayAccess;
 use Countable;
 
-class Cache implements ArrayAccess, IteratorAggregate, Countable
+class Cache implements IteratorAggregate, Countable
 {
     /**
      * The items contained in the collection.
@@ -38,22 +38,18 @@ class Cache implements ArrayAccess, IteratorAggregate, Countable
     }
 
     /**
-     * Determine if an item exists in the collection by key.
+     * Determine if an item exists in the cache.
      *
      * @param  mixed  $key
      * @return bool
      */
     public function has($key) : bool
     {
-        if ($this->offsetExists($key)) {
-            return true;
-        }
-
-        return false;
+        return array_key_exists($key, $this->items);
     }
 
     /**
-     * Put an item into the cache.
+     * Put an item in the cache.
      *
      * @param  mixed  $key
      * @param  mixed|null  $value
@@ -61,7 +57,11 @@ class Cache implements ArrayAccess, IteratorAggregate, Countable
      */
     public function put($key, $value = null) : Cache
     {
-        $this->offsetSet($key, $value);
+        if (! is_int($key) && ! is_string($key)) {
+            throw new InvalidArgumentException('Key must be an integer or string type, ' . gettype($key) . ' found.');
+        }
+
+        $this->items[$key] = $value;
 
         return $this;
     }
@@ -69,8 +69,8 @@ class Cache implements ArrayAccess, IteratorAggregate, Countable
     /**
      * Merge multiple items into the cache.
      *
-     * @param  array  $keys
-     * @return array
+     * @param  array  $items
+     * @return self
      */
     public function merge(array $items) : Cache
     {
@@ -87,7 +87,7 @@ class Cache implements ArrayAccess, IteratorAggregate, Countable
      */
     public function get($key)
     {
-        return $this->offsetGet($key) ?? null;
+        return $this->items[$key] ?? null;
     }
 
     /**
@@ -122,14 +122,16 @@ class Cache implements ArrayAccess, IteratorAggregate, Countable
     }
 
     /**
-     * Remove an item from the cache by key.
+     * Remove a number of items from the cache by key.
      *
-     * @param  mixed  $key
+     * @param  mixed  $keys
      * @return self
      */
-    public function forget($key) : Cache
+    public function forget($keys) : Cache
     {
-        $this->offsetUnset($key);
+        foreach ((array) $keys as $key) {
+            unset($this->items[$key]);
+        }
 
         return $this;
     }
@@ -144,55 +146,6 @@ class Cache implements ArrayAccess, IteratorAggregate, Countable
         $this->items = [];
 
         return $this;
-    }
-
-    /**
-     * Determine if an item exists at an offset.
-     *
-     * @param  mixed  $key
-     * @return bool
-     */
-    public function offsetExists($key)
-    {
-        return array_key_exists($key, $this->items);
-    }
-
-    /**
-     * Get an item at a given offset.
-     *
-     * @param  mixed  $key
-     * @return mixed
-     */
-    public function offsetGet($key)
-    {
-        return $this->items[$key] ?? null;
-    }
-
-    /**
-     * Set the item at a given offset.
-     *
-     * @param  mixed  $key
-     * @param  mixed  $value
-     * @return void
-     */
-    public function offsetSet($key, $value)
-    {
-        if (is_null($key)) {
-            $this->items[] = $value;
-        } else {
-            $this->items[$key] = $value;
-        }
-    }
-
-    /**
-     * Unset the item at a given offset.
-     *
-     * @param  string  $key
-     * @return void
-     */
-    public function offsetUnset($key)
-    {
-        unset($this->items[$key]);
     }
 
     /**
