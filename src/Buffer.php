@@ -137,7 +137,7 @@ class Buffer implements IteratorAggregate, Countable
      *
      * @return \ArrayIterator
      */
-    public function getIterator() : ArrayIterator
+    public function getIterator()
     {
         return new ArrayIterator($this->keys);
     }

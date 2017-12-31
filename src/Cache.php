@@ -23,7 +23,7 @@ class Cache implements ArrayAccess, IteratorAggregate, Countable
      *
      * @return self
      */
-    public static function init()
+    public static function init() : Cache
     {
         return new self();
     }
