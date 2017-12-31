@@ -67,14 +67,16 @@ class Cache implements IteratorAggregate, Countable
     }
 
     /**
-     * Merge multiple items into the cache.
+     * Merge an array of items into the cache.
      *
      * @param  array  $items
      * @return self
      */
     public function merge(array $items) : Cache
     {
-        $this->items = array_replace($this->items, $items);
+        foreach ($items as $key => $value) {
+            $this->put($key, $value);
+        }
 
         return $this;
     }

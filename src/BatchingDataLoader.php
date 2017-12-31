@@ -2,7 +2,7 @@
 
 namespace AndrewDalpino\DataLoader;
 
-use InvalidArgumentException;
+use UnexpectedValueException;
 
 class BatchingDataLoader
 {
@@ -154,7 +154,7 @@ class BatchingDataLoader
     /**
      * Fetch all buffered entities that aren't already in the cache.
      *
-     * @throws \InvalidArgumentException
+     * @throws \UnexpectedValueException
      * @return self
      */
     protected function updateCache() : BatchingDataLoader
@@ -167,16 +167,14 @@ class BatchingDataLoader
             $loaded = call_user_func($this->batchFunction, $batch);
 
             if (! is_iterable($loaded)) {
-                throw new InvalidArgumentException('Batch function must return an array or iterable, ' . gettype($loaded) . ' found.');
+                throw new UnexpectedValueException('Batch function must return an array or iterable, ' . gettype($loaded) . ' found.');
             }
 
             foreach ($loaded as $index => $entity) {
                 $key = call_user_func($this->cacheKeyFunction, $entity, $index);
 
-                $loaded[$key] = $entity;
+                $this->cache()->put($key, $entity);
             }
-
-            $this->cache()->merge($loaded);
         }
 
         $this->buffer()->flush();

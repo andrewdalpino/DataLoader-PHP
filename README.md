@@ -123,10 +123,12 @@ $userLoader->prime($friend);
 ```
 
 ### Removing entities from the cache
-If you need to remove an entity from the cache you may do so by calling `forget()` on the cache instance. To get an instance of the cache simply call `cache()` on the data loader object.
+If you need to remove an entity from the cache you may do so by calling `forget()` on the cache instance. To get an instance of the cache simply call `cache()` on the data loader object. The `forget()` method takes either a single `$key` or an array of `$keys` to be removed from the cache.
 
 ```php
 $userLoader->cache()->forget('a');
+
+$userLoader->cache()->forget(['a', 'c', 'e']);
 ```
 
 ### Flushing the cache
