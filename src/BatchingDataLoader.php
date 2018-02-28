@@ -2,183 +2,207 @@
 
 namespace AndrewDalpino\DataLoader;
 
+use InvalidArgumentException;
 use UnexpectedValueException;
+use RuntimeException;
 
 class BatchingDataLoader
 {
     /**
-     * The key buffer.
+     * A hash map containing buffered keys.
      *
-     * @var  \AndrewDalpino\DataLoader\Buffer  $buffer
+     * @var array
      */
-    protected $buffer;
+    protected $buffer = [
+        //
+    ];
 
     /**
-     * The request cache.
+     * The memoized results of the batch queries.
      *
-     * @var  \AndrewDalpino\DataLoader\Cache  $loaded
+     * @var array
      */
-    protected $loaded;
+    protected $loaded = [
+        //
+    ];
 
     /**
-     * The anonymous function used to batch load entities.
+     * The closure used to batch load entities from a source.
      *
-     * @var  callable  $batchFunction
+     * @var callable
      */
     protected $batchFunction;
 
     /**
-     * The anonymous function used to return the cache key of an entity.
+     * The clorsure that returns the cache key of a loaded entity.
      *
-     * @var  callable  $cacheKeyFunction
+     * @var callable
      */
     protected $cacheKeyFunction;
 
     /**
-     * An array of options.
+     * Options that adjust the runtime behavior of the loader.
      *
-     * @var  array  $options
+     * @var array
      */
     protected $options = [
         'batch_size' => 1000,
     ];
 
     /**
-     * Get the buffer instance.
-     *
-     * @return \AndrewDalpino\DataLoader\Buffer
-     */
-    public function buffer() : Buffer
-    {
-        return $this->buffer;
-    }
-
-    /**
-     * Get the cache instance.
-     *
-     * @return \AndrewDalpino\DataLoader\Cache
-     */
-    public function cache() : Cache
-    {
-        return $this->loaded;
-    }
-
-    /**
-     * Factory method.
+     * Instantiate a new dataloader with provided batch and cache key callbacks.
      *
      * @param  callable  $batchFunction
      * @param  callable|null  $cacheKeyFunction
      * @param  array  $options
-     * @return self
+     * @return void
      */
-    public static function make(callable $batchFunction, callable $cacheKeyFunction = null, array $options = []) : BatchingDataLoader
+    public function __construct(callable $batchFunction, callable $cacheKeyFunction = null, array $options = [])
     {
-        if (is_null($cacheKeyFunction)) {
+        if (!isset($cacheKeyFunction)) {
             $cacheKeyFunction = function ($entity, $index) {
                 return $entity->id ?? $entity['id'] ?? $index;
             };
         }
 
-        return new self($batchFunction, $cacheKeyFunction, $options);
-    }
-
-    /**
-     * @param  callable  $batchFunction
-     * @param  callable  $cacheKeyFunction
-     * @param  array  $options
-     * @return void
-     */
-    public function __construct(callable $batchFunction, callable $cacheKeyFunction, array $options)
-    {
-        $this->buffer = Buffer::init();
-        $this->loaded = Cache::init();
         $this->batchFunction = $batchFunction;
         $this->cacheKeyFunction = $cacheKeyFunction;
         $this->options = array_replace($this->options, $options);
     }
 
     /**
-     * Add keys to the buffer.
+     * Add a batch of keys to the buffer.
      *
      * @param  mixed  $keys
      * @return self
      */
-    public function batch($keys) : BatchingDataLoader
+    public function batch($keys) : self
     {
         foreach ((array) $keys as $key) {
-            $this->buffer()->enqueue($key);
+            $this->buffer($key);
         }
 
         return $this;
     }
 
     /**
-     * Load a single entity or multiple entities by key.
+     * Add a key to the buffer.
+     *
+     * @param  mixed  $key
+     * @return self
+     */
+    public function buffer($key) : self
+    {
+        if (!is_integer($key) && !is_string($key)) {
+            throw new InvalidArgumentException('Key must be an integer or string type, ' . gettype($key) . ' found.');
+        }
+
+        $this->buffer[$key] = true;
+
+        return $this;
+    }
+
+    /**
+     * Load a single entity form the cache by key or return null if not found.
      *
      * @param  mixed  $key
      * @return mixed|null
      */
     public function load($key)
     {
-        return $this->updateCache()->cache()->get($key);
+        $this->updateCache();
+
+        return $this->loaded[$key] ?? null;
     }
 
     /**
-     * Load multiple entities by their key.
+     * Load multiple entities by their key and return an associative array with
+     * entities indexed by their key.
      *
      * @param  array  $keys
      * @return array
      */
     public function loadMany(array $keys) : array
     {
-        return $this->updateCache()->cache()->mget($keys);
+        $this->updateCache();
+
+        return array_intersect_key($this->loaded, array_flip($keys));
     }
 
     /**
      * Prime the cache with a preloaded entity.
      *
      * @param  mixed  $entity
+     * @param  bool  $overwrite
      * @return self
      */
-    public function prime($entity) : BatchingDataLoader
+    public function prime($entity, bool $overwrite = false) : self
     {
         $key = call_user_func($this->cacheKeyFunction, $entity, null);
 
-        if (! $this->cache()->has($key)) {
-            $this->cache()->put($key, $entity);
+        if ($overwrite === false) {
+            if (isset($this->loaded[$key])) {
+                throw new RuntimeException('Entity with key ' . (string) $key . ' already exists in the cache.');
+            }
         }
+
+        $this->loaded[$key] = $entity;
 
         return $this;
     }
 
     /**
-     * Fetch all buffered entities that aren't already in the cache.
+     * Remove all loaded entities from the cache.
      *
-     * @throws \UnexpectedValueException
      * @return self
      */
-    protected function updateCache() : BatchingDataLoader
+    public function flush() : self
     {
-        $queue = $this->buffer()->deduplicate()->diff($this->cache()->keys());
+        $this->loaded = [];
 
-        while ($queue->count()) {
-            $batch = $queue->dequeue($this->options['batch_size']);
+        return $this;
+    }
+
+    /**
+     * Update the cache with the result of a batch query, and key entities using
+     * the cache key function.
+     *
+     * @throws \UnexpectedValueException
+     * @return void
+     */
+    protected function updateCache() : void
+    {
+        $queue = array_keys(array_diff_key($this->buffer, $this->loaded));
+
+        while (!empty($queue)) {
+            $batch = array_splice($queue, 0, $this->options['batch_size']);
 
             $loaded = call_user_func($this->batchFunction, $batch);
 
-            if (! is_iterable($loaded)) {
+            if (!is_iterable($loaded)) {
                 throw new UnexpectedValueException('Batch function must return an array or iterable, ' . gettype($loaded) . ' found.');
             }
 
             foreach ($loaded as $index => $entity) {
                 $key = call_user_func($this->cacheKeyFunction, $entity, $index);
 
-                $this->cache()->put($key, $entity);
+                $this->loaded[$key] = $entity;
             }
         }
 
-        $this->buffer()->flush();
+        $this->buffer = [];
+    }
 
-        return $this;
+    /**
+     * Dump the contents of the buffer and cache. Primarily used for testing.
+     *
+     * @return array
+     */
+    public function dump() : array
+    {
+        return [
+            'buffer' => $this->buffer,
+            'cache' => $this->loaded,
+        ];
     }
 }

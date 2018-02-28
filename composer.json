@@ -2,7 +2,7 @@
     "name": "andrewdalpino/dataloader-php",
     "description": "A speed layer that enables batch loading, de-duplication, and caching for efficient data fetching over any storage backend.",
     "license": "MIT",
-    "keywords": ["php", "dataloader", "graphql", "deduplication", "cache"],
+    "keywords": ["php", "dataloader", "graphql", "database", "memoization", "deduplication"],
     "authors": [
         {
             "name": "Andrew DalPino",
@@ -10,7 +10,7 @@
         }
     ],
     "require": {
-        "php": ">=7.1.0"
+        "php": ">=7.1.3"
     },
     "require-dev": {
         "phpunit/phpunit": "6.0.*"
